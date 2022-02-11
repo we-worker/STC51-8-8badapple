@@ -1,0 +1,154 @@
+C51 COMPILER V9.54   MAIN                                                                  02/10/2022 20:38:31 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: C:\works\Keil_51\C51\BIN\C51.EXE main.c LARGE OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND TABS(2)
+
+line level    source
+
+   1          /**************************************************************************************
+   2          *                 8*8LED点阵———显示数字实验                          *
+   3          实现现象：下载程序后点阵上显示数字0
+   4                
+   5          注意事项：一定要将JOE短接片短接到GND端，如果不需要595后面的小灯点亮可以拔掉JP595短接片。                                    
+             -      
+   6          ***************************************************************************************/
+   7          
+   8          #include "reg51.h"       //此文件中定义了单片机的一些特殊功能寄存器
+   9          #include<intrins.h>
+  10          
+  11          typedef unsigned int u16;   //对数据类型进行声明定义
+  12          typedef unsigned char u8;
+  13          
+  14          char receiveData[16];
+  15          
+  16          u8 ReceiveCount=0;
+  17          
+  18          void UsartInit()
+  19          {
+  20   1        SCON=0X50;      //设置为工作方式1
+  21   1        TMOD=0X20;      //设置计数器工作方式2
+  22   1        PCON=0X80;      //波特率加倍
+  23   1        TH1=0XF3;       //计数器初始值设置，注意波特率是4800的
+  24   1        TL1=0XF3;
+  25   1        ES=1;           //打开接收中断
+  26   1        EA=1;           //打开总中断
+  27   1        TR1=1;          //打开计数器
+  28   1      }
+  29          
+  30          /*******************************************************************************
+  31          * 函数名         : Usart() interrupt 4
+  32          * 函数功能      : 串口通信中断函数
+  33          * 输入           : 无
+  34          * 输出           : 无
+  35          *******************************************************************************/
+  36          void Usart() interrupt 4
+  37          {
+  38   1        receiveData[ReceiveCount++] = SBUF;//出去接收到的数据
+  39   1        if(ReceiveCount >= 8)
+  40   1        {
+  41   2          ReceiveCount = 0; 
+  42   2        }
+  43   1      
+  44   1        RI = 0;//清除接收中断标志位
+  45   1        //SBUF=receiveData;//将接收到的数据放入到发送寄存器
+  46   1        //while(!TI);      //等待发送数据完成
+  47   1        TI=0;            //清除发送完成标志位
+  48   1      }
+  49          
+  50          
+  51          
+  52          
+  53          sbit SRCLK=P3^6;
+  54          sbit RCLK=P3^5;
+C51 COMPILER V9.54   MAIN                                                                  02/10/2022 20:38:31 PAGE 2   
+
+  55          sbit SER=P3^4;
+  56          
+  57          
+  58          /*******************************************************************************
+  59          * 函 数 名         : delay
+  60          * 函数功能       : 延时函数，i=1时，大约延时10us
+  61          *******************************************************************************/
+  62          void delay(u16 i)
+  63          {
+  64   1        while(i--); 
+  65   1      }
+  66          void Delay100ms()   //@12.000MHz
+  67          {
+  68   1        unsigned char i, j;
+  69   1      
+  70   1        i = 195;
+  71   1        j = 138;
+  72   1        do
+  73   1        {
+  74   2          while (--j);
+  75   2        } while (--i);
+  76   1      }
+  77          
+  78          /*******************************************************************************
+  79          * 函数名         : Hc595SendByte(u8 dat)
+  80          * 函数功能       : 向74HC595发送一个字节的数据
+  81          * 输入           : 无
+  82          * 输出           : 无
+  83          *******************************************************************************/
+  84          void Hc595SendByte(unsigned char dat)
+  85          {
+  86   1        u8 a;
+  87   1        SRCLK=0;
+  88   1        RCLK=0;
+  89   1        for(a=0;a<8;a++)
+  90   1        {
+  91   2          SER=dat&(0x80>>a);
+  92   2      
+  93   2          SRCLK=1;
+  94   2          SRCLK=0;  
+  95   2        }
+  96   1      
+  97   1        RCLK=1;
+  98   1        RCLK=0;
+  99   1      }
+ 100          
+ 101          void MatrixLED_ShowColumn(unsigned char Column,Data){
+ 102   1        Hc595SendByte(Data);
+ 103   1        P0=~(0x80>>Column);
+ 104   1        delay(100);
+ 105   1        //_nop_();
+ 106   1        //_nop_();
+ 107   1        P0=0xFF;
+ 108   1      }
+ 109          /*******************************************************************************
+ 110          * 函 数 名       : main
+ 111          * 函数功能     : 主函数
+ 112          * 输    入       : 无
+ 113          * 输    出       : 无
+ 114          *******************************************************************************/
+ 115          u8 a;
+ 116          void main()
+C51 COMPILER V9.54   MAIN                                                                  02/10/2022 20:38:31 PAGE 3   
+
+ 117          { 
+ 118   1          
+ 119   1        UsartInit();
+ 120   1        while(1)
+ 121   1        {
+ 122   2          for(a=0;a<8;a++){
+ 123   3            MatrixLED_ShowColumn(a,receiveData[a]);
+ 124   3          }     
+ 125   2        }   
+ 126   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    230    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     18    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)
